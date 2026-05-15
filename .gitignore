@@ -1,0 +1,15 @@
+.idea/
+chroma_db/
+logs/
+__pycache__/
+md5.text
+.DS_Store
+frontend/.next/
+frontend/node_modules/
+backend/__pycache__/
+backend/.venv/
+.env
+*.pyc
+.venv/
+node_modules/
+Thumbs.db

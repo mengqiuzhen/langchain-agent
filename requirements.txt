@@ -1,0 +1,10 @@
+langchain
+langchain-community
+langchain-chroma
+langchain-text-splitters
+pypdf
+pandas
+pyyaml
+dashscope
+pymupdf
+rapidocr_onnxruntime
