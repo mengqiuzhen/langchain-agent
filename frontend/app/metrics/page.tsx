@@ -26,37 +26,44 @@ export default function MetricsPage() {
   }, []);
 
   return (
-    <div className="card">
-      <h1>运行指标</h1>
-      <p>展示近 500 条事件的汇总结果。</p>
+    <div className="animate-in">
+      <div className="page-header">
+        <h1>运行指标</h1>
+        <p>系统问答统计、成功率与工具调用分析</p>
+      </div>
 
-      {error ? <p className="status">错误：{error}</p> : null}
+      {error ? <div className="alert alert-error">{error}</div> : null}
 
       {summary ? (
         <>
           <div className="metrics-grid">
             <div className="metric">
-              <div>总问答数</div>
+              <div className="metric-label">总问答数</div>
               <div className="metric-value">{summary.total_queries}</div>
             </div>
             <div className="metric">
-              <div>成功问答数</div>
+              <div className="metric-label">成功数</div>
               <div className="metric-value">{summary.success_queries}</div>
             </div>
             <div className="metric">
-              <div>问答成功率</div>
+              <div className="metric-label">成功率</div>
               <div className="metric-value">{summary.success_rate.toFixed(1)}%</div>
             </div>
             <div className="metric">
-              <div>平均耗时</div>
+              <div className="metric-label">平均耗时</div>
               <div className="metric-value">{summary.avg_latency_ms.toFixed(0)} ms</div>
             </div>
           </div>
 
-          <div className="card" style={{ marginTop: 20 }}>
-            <h3>工具调用次数</h3>
+          <div className="card">
+            <div className="card-header">
+              <h2>工具调用统计</h2>
+              <p>近 500 条事件的工具调用次数分布</p>
+            </div>
             {Object.keys(summary.tool_counts).length === 0 ? (
-              <p>暂无工具调用事件</p>
+              <p style={{ color: "var(--text-muted)", fontSize: 14, textAlign: "center", padding: "24px 0" }}>
+                暂无工具调用事件
+              </p>
             ) : (
               <ul className="tool-list">
                 {Object.entries(summary.tool_counts).map(([tool, count]) => (
@@ -68,7 +75,11 @@ export default function MetricsPage() {
             )}
           </div>
         </>
-      ) : null}
+      ) : (
+        <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "48px 0" }}>
+          加载中...
+        </p>
+      )}
     </div>
   );
 }

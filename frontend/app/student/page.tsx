@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { API_BASE_URL, getSubjects } from "@/lib/api";
 import { validateSession } from "@/lib/auth";
 
@@ -39,14 +39,23 @@ function parseSseChunk(buffer: string): { events: StreamEvent[]; remain: string 
   return { events, remain };
 }
 
+const ANSWER_MODES = [
+  { key: "知识讲解", label: "📖 知识讲解", desc: "概念解释与原理拆解" },
+  { key: "例题讲解", label: "✏️ 例题讲解", desc: "生成例题与分步解题" },
+  { key: "课堂出题", label: "📝 课堂出题", desc: "生成课堂练习题" },
+  { key: "错因分析", label: "🔍 错因分析", desc: "常见错误与纠正方法" },
+];
+
 export default function StudentPage() {
+  const chatEndRef = useRef<HTMLDivElement>(null);
   const [subjects, setSubjects] = useState<string[]>(["全部"]);
   const [subject, setSubject] = useState("全部");
+  const [mode, setMode] = useState("知识讲解");
   const [query, setQuery] = useState("");
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "你好，我是你的AI教学助手。你可以问我教材里的知识点、例题与解题思路。",
+      content: "你好，我是你的 AI 教学助手。你可以问我教材里的知识点、例题与解题思路。",
     },
   ]);
   const [loading, setLoading] = useState(false);
@@ -69,12 +78,14 @@ export default function StudentPage() {
       });
   }, []);
 
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const question = query.trim();
-    if (!question) {
-      return;
-    }
+    if (!question) return;
 
     const userMessage: Message = { role: "user", content: question };
     setMessages((prev) => [...prev, userMessage, { role: "assistant", content: "" }]);
@@ -86,7 +97,7 @@ export default function StudentPage() {
       const response = await fetch(`${API_BASE_URL}/api/chat/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: question, subject }),
+        body: JSON.stringify({ query: question, subject, mode }),
       });
 
       if (!response.ok || !response.body) {
@@ -99,9 +110,7 @@ export default function StudentPage() {
 
       while (true) {
         const { value, done } = await reader.read();
-        if (done) {
-          break;
-        }
+        if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
         const { events, remain } = parseSseChunk(buffer);
@@ -165,44 +174,80 @@ export default function StudentPage() {
   }
 
   return (
-    <div className="grid" style={{ alignItems: "start" }}>
-      <div className="card">
+    <div className="animate-in">
+      <div className="page-header">
         <h1>学生端：教学问答</h1>
-        <label>
-          课程（学科）
-          <select value={subject} onChange={(e) => setSubject(e.target.value)}>
-            {subjects.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <form onSubmit={handleSubmit}>
-          <label>
-            输入问题
-            <textarea
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="例如：请解释TCP三次握手并给一道例题"
-            />
-          </label>
-          <button type="submit" disabled={loading}>
-            {loading ? "教学助手生成中..." : "发送问题"}
-          </button>
-        </form>
-        {error ? <p className="status">错误：{error}</p> : null}
+        <p>选择课程与回答模式，基于教材内容获取 AI 精准回答</p>
       </div>
 
-      <div className="card">
-        <h2>对话记录</h2>
-        <div className="chat-box">
-          {messages.map((message, index) => (
-            <div key={`${message.role}-${index}`} className={`message ${message.role}`}>
-              {message.content}
+      <div className="panel-layout">
+        <div className="panel-side">
+          <div className="card">
+            <div className="card-header">
+              <h2>课程设置</h2>
             </div>
-          ))}
+            <div className="form-group">
+              <label className="form-label">学科</label>
+              <select value={subject} onChange={(e) => setSubject(e.target.value)}>
+                {subjects.map((item) => (
+                  <option key={item} value={item}>{item}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-header">
+              <h2>回答模式</h2>
+            </div>
+            <div className="mode-list">
+              {ANSWER_MODES.map((m) => (
+                <button
+                  key={m.key}
+                  type="button"
+                  className={`mode-option ${mode === m.key ? "active" : ""}`}
+                  onClick={() => setMode(m.key)}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+          <div className="chat-container">
+            <div className="chat-messages">
+              {messages.map((message, index) => (
+                <div key={`${message.role}-${index}`} className={`chat-bubble ${message.role}`}>
+                  {message.content || (
+                    <span>
+                      <span className="typing-dot" />
+                      <span className="typing-dot" />
+                      <span className="typing-dot" />
+                    </span>
+                  )}
+                </div>
+              ))}
+              {error ? (
+                <div className="alert alert-error" style={{ margin: "0 16px" }}>{error}</div>
+              ) : null}
+              <div ref={chatEndRef} />
+            </div>
+
+            <form onSubmit={handleSubmit} className="chat-input-row">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="输入你的问题，例如：请解释 TCP 三次握手..."
+                disabled={loading}
+              />
+              <button type="submit" className="btn btn-primary" disabled={loading}>
+                {loading ? "生成中..." : "发送"}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </div>

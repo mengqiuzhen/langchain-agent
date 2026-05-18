@@ -28,27 +28,49 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="card" style={{ maxWidth: 560, margin: "0 auto" }}>
-      <h1>登录</h1>
-      <p>账号由管理员创建后发放。当前系统已关闭公开注册。</p>
+    <div className="login-page">
+      <div className="login-card animate-in">
+        <div className="card">
+          <div className="login-logo">
+            <div className="login-logo-icon" />
+            <span className="login-logo-text">AI 教学助手</span>
+          </div>
 
-      <form onSubmit={handleSubmit}>
-        <label>
-          邮箱
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="example@qq.com" required />
-        </label>
+          <p style={{ textAlign: "center", color: "var(--text-secondary)", fontSize: 14, marginBottom: 28 }}>
+            账号由管理员创建后发放
+          </p>
 
-        <label>
-          密码
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} required />
-        </label>
+          <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label className="form-label">邮箱</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="example@qq.com"
+                required
+              />
+            </div>
 
-        <button type="submit" disabled={loading}>
-          {loading ? "登录中..." : "登录"}
-        </button>
-      </form>
+            <div className="form-group">
+              <label className="form-label">密码</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                minLength={6}
+                required
+              />
+            </div>
 
-      {error ? <p className="status">错误：{error}</p> : null}
+            <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
+              {loading ? "登录中..." : "登录"}
+            </button>
+          </form>
+
+          {error ? <div className="alert alert-error">{error}</div> : null}
+        </div>
+      </div>
     </div>
   );
 }

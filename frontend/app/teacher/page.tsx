@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { API_BASE_URL, deleteKnowledgeFile, getKnowledgeFiles, KnowledgeFileItem } from "@/lib/api";
 import { validateSession } from "@/lib/auth";
 
@@ -19,6 +19,7 @@ type UploadResult = {
 };
 
 export default function TeacherPage() {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [subject, setSubject] = useState("计算机网络");
   const [grade, setGrade] = useState("大一");
   const [author, setAuthor] = useState("未填写");
@@ -81,6 +82,8 @@ export default function TeacherPage() {
       }
 
       setResult(data as UploadResult);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      setFiles(null);
       await refreshKnowledgeFiles();
     } catch (err) {
       setError(err instanceof Error ? err.message : "上传失败");
@@ -95,10 +98,7 @@ export default function TeacherPage() {
       return;
     }
 
-    const ok = window.confirm(`确认删除教材《${item.source}》？该操作不可撤销。`);
-    if (!ok) {
-      return;
-    }
+    if (!window.confirm(`确认删除教材《${item.source}》？该操作不可撤销。`)) return;
 
     setDeleteLoadingMd5(item.file_md5);
     setError("");
@@ -115,105 +115,119 @@ export default function TeacherPage() {
     }
   }
 
+  const selectedCount = files ? files.length : 0;
+
   return (
-    <div className="grid" style={{ alignItems: "start" }}>
-      <div className="card">
-        <h1>教师端：教材入库</h1>
-        <p>支持一次上传多个 PDF 文件，保留原有入库逻辑与去重逻辑。</p>
+    <div className="animate-in">
+      <div className="page-header">
+        <h1>教师端：教材管理</h1>
+        <p>上传教材 PDF 入库，管理已入库的教材文件</p>
+      </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="grid">
-            <label>
-              学科
-              <input value={subject} onChange={(e) => setSubject(e.target.value)} />
-            </label>
+      <div className="panel-layout">
+        <div className="panel-side">
+          <div className="card">
+            <div className="card-header">
+              <h2>上传教材</h2>
+              <p>支持一次上传多个 PDF 文件</p>
+            </div>
 
-            <label>
-              年级
-              <select value={grade} onChange={(e) => setGrade(e.target.value)}>
-                {gradeOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              教材作者
-              <input value={author} onChange={(e) => setAuthor(e.target.value)} />
-            </label>
-          </div>
-
-          <label>
-            选择教材 PDF
-            <input type="file" accept="application/pdf" multiple onChange={(e) => setFiles(e.target.files)} />
-          </label>
-
-          <button type="submit" disabled={loading}>
-            {loading ? "正在入库..." : "开始入库"}
-          </button>
-        </form>
-
-        {error ? <p className="status">错误：{error}</p> : null}
-
-        {result ? (
-          <div className="card" style={{ marginTop: 20 }}>
-            <h3>入库结果</h3>
-            <p>
-              新增 {result.success_count} 个文件，共新增 {result.chunk_count} 个唯一文本分片。
-            </p>
-            <p>
-              学科：{result.subject} / 年级：{result.grade} / 作者：{result.author}
-            </p>
-            <p>重复文件：{result.duplicate_count}</p>
-            <p>空内容文件：{result.empty_count}</p>
-            <p>处理失败文件：{result.failed_count}</p>
-            {result.failed_details && result.failed_details.length > 0 ? (
-              <div>
-                <p>失败详情：</p>
-                <ul className="tool-list">
-                  {result.failed_details.map((line, index) => (
-                    <li key={`${line}-${index}`}>{line}</li>
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label className="form-label">学科</label>
+                <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="如：计算机网络" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">年级</label>
+                <select value={grade} onChange={(e) => setGrade(e.target.value)}>
+                  {gradeOptions.map((o) => (
+                    <option key={o} value={o}>{o}</option>
                   ))}
-                </ul>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">教材作者</label>
+                <input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="如：谢希仁" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">
+                  选择 PDF 文件{selectedCount > 0 ? `（已选 ${selectedCount} 个）` : ""}
+                </label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="application/pdf"
+                  multiple
+                  onChange={(e) => setFiles(e.target.files)}
+                />
+              </div>
+              <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
+                {loading ? "正在入库..." : "开始入库"}
+              </button>
+            </form>
+
+            {error ? <div className="alert alert-error">{error}</div> : null}
+
+            {result ? (
+              <div className="upload-result">
+                <h3>入库结果</h3>
+                <p>新增 {result.success_count} 个文件，共 {result.chunk_count} 个分片</p>
+                <p>学科：{result.subject} / 年级：{result.grade} / 作者：{result.author}</p>
+                <p>重复：{result.duplicate_count} / 空内容：{result.empty_count} / 失败：{result.failed_count}</p>
+                {result.failed_details && result.failed_details.length > 0 ? (
+                  <ul className="tool-list" style={{ marginTop: 8 }}>
+                    {result.failed_details.map((line, i) => (
+                      <li key={i}>{line}</li>
+                    ))}
+                  </ul>
+                ) : null}
               </div>
             ) : null}
           </div>
-        ) : null}
-      </div>
+        </div>
 
-      <div className="card">
-        <h2>教材管理（单个删除）</h2>
-        <p>删除时会保留仍被其他教材引用的共享内容，只移除真正无引用的分片。</p>
+        <div>
+          <div className="card">
+            <div className="card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <h2>已入库教材</h2>
+                <p>删除时会保留被其他教材引用的共享内容</p>
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={refreshKnowledgeFiles}
+                disabled={listLoading}
+              >
+                {listLoading ? "刷新中..." : "刷新列表"}
+              </button>
+            </div>
 
-        <button type="button" onClick={refreshKnowledgeFiles} disabled={listLoading}>
-          {listLoading ? "刷新中..." : "刷新教材列表"}
-        </button>
-
-        <div style={{ marginTop: 12 }}>
-          {knowledgeFiles.length === 0 ? (
-            <p>暂无教材记录</p>
-          ) : (
-            <ul className="tool-list">
-              {knowledgeFiles.map((item) => (
-                <li key={item.file_md5 || item.source} style={{ marginBottom: 12 }}>
-                  <div>
-                    <strong>{item.source}</strong>
+            {knowledgeFiles.length === 0 ? (
+              <p style={{ color: "var(--text-muted)", fontSize: 14, textAlign: "center", padding: "32px 0" }}>
+                暂无教材记录
+              </p>
+            ) : (
+              <div className="file-list">
+                {knowledgeFiles.map((item) => (
+                  <div key={item.file_md5 || item.source} className="file-item">
+                    <div className="file-item-info">
+                      <div className="file-item-name">{item.source}</div>
+                      <div className="file-item-meta">分片数：{item.chunk_count}</div>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-danger btn-sm"
+                      disabled={deleteLoadingMd5 === item.file_md5}
+                      onClick={() => handleDelete(item)}
+                    >
+                      {deleteLoadingMd5 === item.file_md5 ? "删除中..." : "删除"}
+                    </button>
                   </div>
-                  <div>分片数：{item.chunk_count}</div>
-                  <button
-                    type="button"
-                    style={{ marginTop: 8 }}
-                    disabled={deleteLoadingMd5 === item.file_md5}
-                    onClick={() => handleDelete(item)}
-                  >
-                    {deleteLoadingMd5 === item.file_md5 ? "删除中..." : "删除该教材"}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
