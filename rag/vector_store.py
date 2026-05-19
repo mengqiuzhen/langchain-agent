@@ -19,21 +19,27 @@ from utils.path_tools import get_abs_path
 
 class VectorStoreService:
     def __init__(self):
-        self.vector_store = Chroma(
-            collection_name=chroma_conf["collection_name"],
-            embedding_function=embed_model,
-            persist_directory=get_abs_path(chroma_conf["persist_directory"]),
-        )
+        self._init_common()
+        self.vector_store = self._create_vector_store()
 
+    def _init_common(self):
+        """共享初始化：分片器 + 引用追踪路径"""
         self.spliter = RecursiveCharacterTextSplitter(
             chunk_size=chroma_conf["chunk_size"],
             chunk_overlap=chroma_conf["chunk_overlap"],
             separators=chroma_conf["separators"],
             length_function=len,
         )
-
         self.chunk_ref_store_path = get_abs_path("logs/chunk_refs.json")
         self.file_ref_store_path = get_abs_path("logs/file_refs.json")
+
+    def _create_vector_store(self):
+        """创建底层向量库实例（子类可覆写）"""
+        return Chroma(
+            collection_name=chroma_conf["collection_name"],
+            embedding_function=embed_model,
+            persist_directory=get_abs_path(chroma_conf["persist_directory"]),
+        )
 
     def get_retriever(self):
         return self.vector_store.as_retriever(search_kwargs={"k": chroma_conf["k"]})
